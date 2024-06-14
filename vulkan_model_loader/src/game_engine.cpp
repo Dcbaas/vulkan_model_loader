@@ -1,8 +1,11 @@
 #include "game_engine.h"
 
+#include <algorithm>
 #include <vector>
 #include <cstdint>
 #include <iostream>
+#include <optional>
+#include <set>
 #include <stdexcept>
 
 namespace baas::game_engine
@@ -18,7 +21,7 @@ namespace baas::game_engine
         "VK_LAYER_KHRONOS_validation"
     };
 
-    const std::vector<const char*> deviceExtensions = {
+    const std::vector<const char*> device_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };    
 
@@ -66,14 +69,7 @@ namespace baas::game_engine
 
     void GameEngine::init_vulkan()
     {
-        create_instance();
-        setup_debug_messenger();
-    }
-
-    void GameEngine::create_instance()
-    {
-        // TODO Add Validation Layers Support
-
+        // Create Instance
         vk::ApplicationInfo app_info{};
         app_info.pApplicationName = "Vulkan Model Loader";
         app_info.applicationVersion = vk::makeVersion(1, 0, 0);
@@ -95,6 +91,31 @@ namespace baas::game_engine
         }
         // TODO handle exceptions
         vk_instance = vk::createInstanceUnique(create_info);
+        
+        setup_debug_messenger();
+
+        // Setup Surface 
+        VkSurfaceKHR surface_temp;
+        auto result = glfwCreateWindowSurface(*vk_instance, window, nullptr, &surface_temp);
+        if (result != VK_SUCCESS)
+        {
+            /* code */
+            throw std::runtime_error("Failed to create surface");
+        }
+        surface = vk::UniqueSurfaceKHR(surface_temp, *vk_instance);
+
+        auto physical_devices = vk_instance->enumeratePhysicalDevices();
+        auto physicalDevice = physical_devices[std::distance(physical_devices.begin(),
+        std::find_if(physical_devices.begin(), physical_devices.end(), [](const vk::PhysicalDevice& physical_device) {
+            auto available_extensions = physical_device.enumerateDeviceExtensionProperties();
+            std::set<std::string> required_extensions(device_extensions.begin(), device_extensions.end());
+            for (auto &&extension : available_extensions)
+            {
+                required_extensions.erase(extension.extensionName);
+            }
+            
+        }))];
+        
     }
 
     void GameEngine::setup_debug_messenger()
