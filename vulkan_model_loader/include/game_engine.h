@@ -9,6 +9,7 @@
 namespace baas::game_engine
 {
 
+    // TODO Put this in a nicer place later
     constexpr uint32_t WIDTH = 800;
     constexpr uint32_t HEIGHT = 600;
     
@@ -26,11 +27,16 @@ namespace baas::game_engine
     private:
         GLFWwindow* window;
         vk::Instance vk_instance;
+        vk::DebugUtilsMessengerEXT debug_messenger;
 
         std::bitset<2> engine_state;
 
         void init_window();
+        void init_vulkan();
+
         void create_instance();
+        
+        void setup_debug_messenger();
 
         bool window_enabled() const 
         {
