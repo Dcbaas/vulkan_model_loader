@@ -26,10 +26,13 @@ namespace baas::game_engine
         ~GameEngine();
     private:
         GLFWwindow* window;
-        vk::Instance vk_instance;
-        vk::DebugUtilsMessengerEXT debug_messenger;
+
+        vk::UniqueInstance vk_instance;
+        vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debug_messenger;
+        vk::UniqueSurfaceKHR surface;
 
         std::bitset<2> engine_state;
+
 
         void init_window();
         void init_vulkan();
