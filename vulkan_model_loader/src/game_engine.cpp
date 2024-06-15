@@ -17,6 +17,22 @@ namespace baas::game_engine
     constexpr bool enable_validation_layers = true;
     #endif
 
+    // Utility Struct to determine queue families 
+    struct QueueFamilyIndices {
+        std::optional<uint32_t> graphicsFamily;
+        std::optional<uint32_t> presentFamily;
+
+        bool isComplete() {
+            return graphicsFamily.has_value() && presentFamily.has_value();
+        }
+    };
+    // Utility Struct to determine swap chain support
+    struct SwapChainSupportDetails {
+        vk::SurfaceCapabilitiesKHR capabilities;
+        std::vector<vk::SurfaceFormatKHR> formats;
+        std::vector<vk::PresentModeKHR> presentModes;
+    };
+
     const std::vector<const char*> validationLayers = {
         "VK_LAYER_KHRONOS_validation"
     };
@@ -37,16 +53,6 @@ namespace baas::game_engine
 
     GameEngine::~GameEngine()
     {
-        // if (enable_validation_layers)
-        // {
-        //     vk_instance->destroyDebugUtilsMessengerEXT();
-        // }
-        
-        // if (vk_instance_enabled())
-        // {
-        //     vk_instance->destroy();
-        // }
-
         if (window_enabled())
         {
             glfwDestroyWindow(window);
@@ -104,18 +110,80 @@ namespace baas::game_engine
         }
         surface = vk::UniqueSurfaceKHR(surface_temp, *vk_instance);
 
+        // Choose PhysicalDevice
         auto physical_devices = vk_instance->enumeratePhysicalDevices();
-        auto physicalDevice = physical_devices[std::distance(physical_devices.begin(),
-        std::find_if(physical_devices.begin(), physical_devices.end(), [](const vk::PhysicalDevice& physical_device) {
-            auto available_extensions = physical_device.enumerateDeviceExtensionProperties();
-            std::set<std::string> required_extensions(device_extensions.begin(), device_extensions.end());
-            for (auto &&extension : available_extensions)
+        auto find_queue_families = [this](vk::PhysicalDevice& physical_device)
+        {
+            // Check Queue Families
+            QueueFamilyIndices indicies;
+            auto queue_family_properties = physical_device.getQueueFamilyProperties();
+            uint32_t i {0};
+            for (auto &&queue_family : queue_family_properties)
             {
-                required_extensions.erase(extension.extensionName);
+                if (queue_family.queueFlags & vk::QueueFlagBits::eGraphics)
+                {
+                    indicies.graphicsFamily = i;
+                }
+                VkBool32 present_support = physical_device.getSurfaceSupportKHR(i, *this->surface);
+                if (present_support)
+                {
+                    indicies.presentFamily = i;
+                }
+
+                if (indicies.isComplete())
+                {
+                    break;
+                }
+                ++i;
             }
-            
-        }))];
+
+            return indicies;
+        };
+
+        auto all_device_ext_present = [](vk::PhysicalDevice& physical_device)
+        {
+            // Check extension support
+            auto available_extensions = physical_device.enumerateDeviceExtensionProperties();
+            const char* required_extensions = vk::KHRSwapchainExtensionName;
+            return std::any_of(available_extensions.begin(), available_extensions.end(), 
+            [](vk::ExtensionProperties& extension){return extension.extensionName.data() == vk::KHRSwapchainExtensionName;});
+        };
+
+        auto get_swap_chain_support_info = [this](vk::PhysicalDevice& physical_device)
+        {
+            SwapChainSupportDetails details;
+            details.capabilities = physical_device.getSurfaceCapabilitiesKHR(*this->surface);
+            details.formats = physical_device.getSurfaceFormatsKHR(*this->surface);
+            details.presentModes = physical_device.getSurfacePresentModesKHR(*this->surface);
+            return details;
+        };
+
+        std::optional<vk::PhysicalDevice> chosen_device; // This is probably dumb TODO. Find a way to do this better
+        QueueFamilyIndices indicies;
+        SwapChainSupportDetails swap_chain_details;
+        for (auto &&tmp_physical_device : physical_devices)
+        {
+            indicies = find_queue_families(tmp_physical_device);
+            bool extensions_supported = all_device_ext_present(tmp_physical_device);
+            swap_chain_details = get_swap_chain_support_info(tmp_physical_device);
+            bool swap_chains_adequate = !swap_chain_details.formats.empty() && !swap_chain_details.presentModes.empty();
+            if (indicies.isComplete() && extensions_supported && swap_chains_adequate)
+            {
+                chosen_device = tmp_physical_device;
+                break;
+            }
+        }
+
+        if (!chosen_device.has_value())
+        {
+            throw std::runtime_error("Failed to find a suitable GPU");
+        }
+        else
+        {
+            physical_device = chosen_device.value();
+        }
         
+        throw std::runtime_error("Test");
     }
 
     void GameEngine::setup_debug_messenger()

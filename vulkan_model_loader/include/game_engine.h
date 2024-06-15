@@ -30,6 +30,7 @@ namespace baas::game_engine
         vk::UniqueInstance vk_instance;
         vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debug_messenger;
         vk::UniqueSurfaceKHR surface;
+        vk::PhysicalDevice physical_device;
 
         std::bitset<2> engine_state;
 
