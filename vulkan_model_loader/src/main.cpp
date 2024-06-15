@@ -14,7 +14,11 @@ int main(int argc, char** argv)
         std::cout << "Error: " << re.what() << '\n';
         return 1;
     }
-    std::cout << "Hello Vulkan" << '\n';
+    catch (std::exception any_ex)
+    {
+        std::cout << "Error: " << any_ex.what() << '\n';
+        return 1;
+    }
 
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <string>
 
 namespace baas::game_engine
 {
@@ -81,7 +82,7 @@ namespace baas::game_engine
         app_info.applicationVersion = vk::makeVersion(1, 0, 0);
         app_info.pEngineName = "Vulkan HPP";
         app_info.engineVersion = vk::makeVersion(1, 0, 0);
-        app_info.apiVersion = VK_API_VERSION_1_2;
+        app_info.apiVersion = vk::ApiVersion10;
 
         vk::InstanceCreateInfo create_info{};
         create_info.pApplicationInfo = &app_info;
@@ -146,7 +147,12 @@ namespace baas::game_engine
             auto available_extensions = physical_device.enumerateDeviceExtensionProperties();
             const char* required_extensions = vk::KHRSwapchainExtensionName;
             return std::any_of(available_extensions.begin(), available_extensions.end(), 
-            [](vk::ExtensionProperties& extension){return extension.extensionName.data() == vk::KHRSwapchainExtensionName;});
+            [](vk::ExtensionProperties& extension)
+            {
+                std::string extension_name = std::string(extension.extensionName.data());
+                std::string expected_ext = std::string(vk::KHRSwapchainExtensionName);
+                return expected_ext == extension_name;
+            });
         };
 
         auto get_swap_chain_support_info = [this](vk::PhysicalDevice& physical_device)
@@ -182,17 +188,25 @@ namespace baas::game_engine
         {
             physical_device = chosen_device.value();
         }
-        
-        throw std::runtime_error("Test");
     }
 
     void GameEngine::setup_debug_messenger()
     {
-
         // TODO Add validation layers check
         if (enable_validation_layers)
         {
             auto dynamic_dispatch_loader = vk::DispatchLoaderDynamic(*vk_instance, vkGetInstanceProcAddr);
+
+            auto create_function = dynamic_dispatch_loader.vkCreateDebugUtilsMessengerEXT;
+            if (create_function == nullptr)
+            {
+                throw std::runtime_error("vkCreateDebugUtilsMessengerEXT is null");
+            }
+            auto destroy_function = dynamic_dispatch_loader.vkDestroyDebugUtilsMessengerEXT;
+            if (destroy_function == nullptr)
+            {
+                throw std::runtime_error("vkDestroyDebugUtilsMessengerEXT is null");
+            }
 
             using debug_util_bits = vk::DebugUtilsMessageSeverityFlagBitsEXT;
             auto severity_flags = debug_util_bits::eVerbose | debug_util_bits::eWarning | debug_util_bits::eError;
@@ -201,6 +215,7 @@ namespace baas::game_engine
 
             using DebugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT;
             DebugCreateInfo debug_create_info = DebugCreateInfo({}, severity_flags, message_type_flags, debug_callback);
+            // TODO: It seems that the function for creating the messenger is null causing seg fault. Find out why this is. 
             debug_messenger = vk_instance->createDebugUtilsMessengerEXTUnique(debug_create_info, nullptr, dynamic_dispatch_loader);
         }
     }
@@ -211,7 +226,10 @@ namespace baas::game_engine
         const char** glfw_ext = glfwGetRequiredInstanceExtensions(&glfw_ext_count);
 
         std::vector<const char*> extensions(glfw_ext, glfw_ext + glfw_ext_count);
-
+        if (enable_validation_layers)
+        {
+            extensions.push_back(vk::EXTDebugUtilsExtensionName);
+        }
         return extensions;
     }
 
