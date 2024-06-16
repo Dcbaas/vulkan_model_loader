@@ -108,10 +108,34 @@ namespace baas::game_engine
             create_info.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
             create_info.ppEnabledLayerNames = validationLayers.data();
         }
-        // TODO handle exceptions
         vk_instance = vk::createInstanceUnique(create_info);
         
-        setup_debug_messenger();
+        // Setup Debugger
+        if (enable_validation_layers)
+        {
+            auto dynamic_dispatch_loader = vk::DispatchLoaderDynamic(*vk_instance, vkGetInstanceProcAddr);
+
+            auto create_function = dynamic_dispatch_loader.vkCreateDebugUtilsMessengerEXT;
+            if (create_function == nullptr)
+            {
+                throw std::runtime_error("vkCreateDebugUtilsMessengerEXT is null");
+            }
+            auto destroy_function = dynamic_dispatch_loader.vkDestroyDebugUtilsMessengerEXT;
+            if (destroy_function == nullptr)
+            {
+                throw std::runtime_error("vkDestroyDebugUtilsMessengerEXT is null");
+            }
+
+            using debug_util_bits = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+            auto severity_flags = debug_util_bits::eVerbose | debug_util_bits::eWarning | debug_util_bits::eError;
+            using message_type_bits = vk::DebugUtilsMessageTypeFlagBitsEXT;
+            auto message_type_flags = message_type_bits::eGeneral | message_type_bits::eValidation | message_type_bits::ePerformance;
+
+            using DebugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT;
+            DebugCreateInfo debug_create_info = DebugCreateInfo({}, severity_flags, message_type_flags, debug_callback);
+            // TODO: It seems that the function for creating the messenger is null causing seg fault. Find out why this is. 
+            debug_messenger = vk_instance->createDebugUtilsMessengerEXTUnique(debug_create_info, nullptr, dynamic_dispatch_loader);
+        }
 
         // Setup Surface 
         VkSurfaceKHR surface_temp;
@@ -231,6 +255,59 @@ namespace baas::game_engine
         vk::DeviceCreateInfo device_create_info(vk::DeviceCreateFlags(),queue_create_infos, enabled_layers, device_extensions); // TODO this might not be right
         
         device = physical_device.createDeviceUnique(device_create_info);
+
+        device->getQueue(indicies.graphicsFamily.value(), 0);
+        device->getQueue(indicies.presentFamily.value(), 0);
+
+        // Create Swap Chains
+
+        vk::SurfaceFormatKHR chosen_format;
+        for (auto &&available_format : swap_chain_details.formats)
+        {
+            if (available_format.format == vk::Format::eB8G8R8A8Srgb && available_format.colorSpace == vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear)
+            {
+                chosen_format = available_format;
+                break;
+            }
+        }
+
+        vk::PresentModeKHR chosen_present_mode{vk::PresentModeKHR::eFifo}; // Fallback to fifo if mailbox doesn't exist.
+        for (auto &&present_mode : swap_chain_details.presentModes)
+        {
+            if (present_mode == vk::PresentModeKHR::eMailbox)
+            {
+                chosen_present_mode = present_mode;
+                break;
+            }
+        }
+
+        vk::Extent2D chosen_extent;
+        if (swap_chain_details.capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+        {
+            chosen_extent = swap_chain_details.capabilities.currentExtent;
+        }
+        else
+        {
+            int width;
+            int height;
+            auto capabilities = swap_chain_details.capabilities; // temp declaration here for simpler referencing.
+            glfwGetFramebufferSize(window, &width, &height);
+
+            chosen_extent = vk::Extent2D(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+            chosen_extent.width = std::clamp(chosen_extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            chosen_extent.height = std::clamp(chosen_extent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        }
+
+        uint32_t image_count = swap_chain_details.capabilities.minImageCount + 1;
+        if (swap_chain_details.capabilities.maxImageCount > 0 && image_count > swap_chain_details.capabilities.maxImageCount) {
+            image_count = swap_chain_details.capabilities.maxImageCount;
+        }
+        
+        vk::ImageUsageFlags image_usage_flags(vk::ImageUsageFlagBits::eColorAttachment);
+        std::vector<uint32_t> swap_info_queue_indicies{indicies.graphicsFamily.value(), indicies.presentFamily.value()};
+        vk::SwapchainCreateInfoKHR swap_chain_create_info(vk::SwapchainCreateFlagsKHR(), *surface, image_count, chosen_format, chosen_format.colorSpace, chosen_extent, 1, image_usage_flags, vk::SharingMode::eExclusive, swap_info_queue_indicies.data());
+        
+        
     }
 
     void GameEngine::main_loop()
@@ -240,36 +317,6 @@ namespace baas::game_engine
             glfwPollEvents();
         }
         
-    }
-
-    void GameEngine::setup_debug_messenger()
-    {
-        // TODO Add validation layers check
-        if (enable_validation_layers)
-        {
-            auto dynamic_dispatch_loader = vk::DispatchLoaderDynamic(*vk_instance, vkGetInstanceProcAddr);
-
-            auto create_function = dynamic_dispatch_loader.vkCreateDebugUtilsMessengerEXT;
-            if (create_function == nullptr)
-            {
-                throw std::runtime_error("vkCreateDebugUtilsMessengerEXT is null");
-            }
-            auto destroy_function = dynamic_dispatch_loader.vkDestroyDebugUtilsMessengerEXT;
-            if (destroy_function == nullptr)
-            {
-                throw std::runtime_error("vkDestroyDebugUtilsMessengerEXT is null");
-            }
-
-            using debug_util_bits = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-            auto severity_flags = debug_util_bits::eVerbose | debug_util_bits::eWarning | debug_util_bits::eError;
-            using message_type_bits = vk::DebugUtilsMessageTypeFlagBitsEXT;
-            auto message_type_flags = message_type_bits::eGeneral | message_type_bits::eValidation | message_type_bits::ePerformance;
-
-            using DebugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT;
-            DebugCreateInfo debug_create_info = DebugCreateInfo({}, severity_flags, message_type_flags, debug_callback);
-            // TODO: It seems that the function for creating the messenger is null causing seg fault. Find out why this is. 
-            debug_messenger = vk_instance->createDebugUtilsMessengerEXTUnique(debug_create_info, nullptr, dynamic_dispatch_loader);
-        }
     }
 
     std::vector<const char*> get_required_extensions()

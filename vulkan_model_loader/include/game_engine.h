@@ -34,6 +34,9 @@ namespace baas::game_engine
         vk::PhysicalDevice physical_device;
         vk::UniqueDevice device;
 
+        vk::Queue graphics_queue;
+        vk::Queue present_queue;
+
         std::bitset<2> engine_state;
 
 
@@ -41,8 +44,6 @@ namespace baas::game_engine
         void init_vulkan();
 
         void create_instance();
-        
-        void setup_debug_messenger();
 
         bool window_enabled() const 
         {
