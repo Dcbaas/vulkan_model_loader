@@ -6,7 +6,6 @@ find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 
 set(SOURCES
-    "src/lib.cpp"
     "src/game_engine.cpp"
     "src/main.cpp"
 )

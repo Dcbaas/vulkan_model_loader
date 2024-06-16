@@ -8,6 +8,7 @@ int main(int argc, char** argv)
     try
     {
         baas::game_engine::GameEngine engine = baas::game_engine::GameEngine();
+        engine.main_loop();
     }
     catch (std::runtime_error re)
     {

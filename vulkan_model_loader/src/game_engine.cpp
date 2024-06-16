@@ -1,6 +1,7 @@
 #include "game_engine.h"
 
 #include <algorithm>
+#include <iterator>
 #include <vector>
 #include <cstdint>
 #include <iostream>
@@ -44,6 +45,16 @@ namespace baas::game_engine
 
     VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
+    void glfw_key_press_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+    {
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+        }
+        
+    }
+
     std::vector<const char*> get_required_extensions();
 
     GameEngine::GameEngine()
@@ -53,7 +64,7 @@ namespace baas::game_engine
     }
 
     GameEngine::~GameEngine()
-    {
+    {   
         if (window_enabled())
         {
             glfwDestroyWindow(window);
@@ -70,6 +81,7 @@ namespace baas::game_engine
         
         engine_state.set(engine_state_bit::WINDOW_BIT);
         glfwSetWindowUserPointer(window, this);
+        glfwSetKeyCallback(window, glfw_key_press_callback);
 
         // TODO Add Frame Buffer Size callback
     }
@@ -188,6 +200,46 @@ namespace baas::game_engine
         {
             physical_device = chosen_device.value();
         }
+
+        // Create Logical Device
+        std::vector<uint32_t> unique_queue_families;
+        if (indicies.graphicsFamily == indicies.presentFamily)
+        {
+            unique_queue_families.push_back(indicies.graphicsFamily.value());
+        }
+        else
+        {
+            unique_queue_families.push_back(indicies.graphicsFamily.value());
+            unique_queue_families.push_back(indicies.presentFamily.value());
+        }
+
+        std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
+        float queue_priority = 1.0f;
+        for (auto &&queue_family_index : unique_queue_families)
+        {
+            // vk::DeviceQueueCreateInfo queue_create_info(vk::DeviceQueueCreateFlags(), queue_family_index, 1.0f); // This constructor didn't work. Why? 
+            vk::DeviceQueueCreateInfo queue_create_info(vk::DeviceQueueCreateFlags(),queue_family_index, 1, &queue_priority);
+            queue_create_infos.push_back(queue_create_info);
+        }
+
+        std::vector<const char*> enabled_layers;
+        if (enable_validation_layers)
+        {
+            std::copy(validationLayers.begin(), validationLayers.end(), std::back_inserter(enabled_layers));
+        }
+        
+        vk::DeviceCreateInfo device_create_info(vk::DeviceCreateFlags(),queue_create_infos, enabled_layers, device_extensions); // TODO this might not be right
+        
+        device = physical_device.createDeviceUnique(device_create_info);
+    }
+
+    void GameEngine::main_loop()
+    {
+        while (!glfwWindowShouldClose(window))
+        {
+            glfwPollEvents();
+        }
+        
     }
 
     void GameEngine::setup_debug_messenger()

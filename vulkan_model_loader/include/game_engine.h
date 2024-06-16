@@ -24,6 +24,7 @@ namespace baas::game_engine
     public:
         GameEngine();
         ~GameEngine();
+        void main_loop();
     private:
         GLFWwindow* window;
 
@@ -31,6 +32,7 @@ namespace baas::game_engine
         vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debug_messenger;
         vk::UniqueSurfaceKHR surface;
         vk::PhysicalDevice physical_device;
+        vk::UniqueDevice device;
 
         std::bitset<2> engine_state;
 
