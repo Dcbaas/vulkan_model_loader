@@ -324,7 +324,28 @@ namespace baas::game_engine
             vk::ImageViewCreateInfo image_view_create_info(vk::ImageViewCreateFlags(), image, image_view_type, chosen_format, component_mapping, sub_resource_range);
             image_views.push_back(device->createImageViewUnique(image_view_create_info));
         }
-        
+
+        // Create Render Pass
+        auto samples = vk::SampleCountFlagBits::e1;
+        auto load_op = vk::AttachmentLoadOp::eClear;
+        auto store_op = vk::AttachmentStoreOp::eStore;
+        auto stencil_load_op = vk::AttachmentLoadOp::eDontCare;
+        auto stencil_store_op = vk::AttachmentStoreOp::eDontCare;
+        auto init_layout = vk::ImageLayout::eUndefined;
+        auto final_layout = vk::ImageLayout::ePresentSrcKHR;
+        auto color_attachment = vk::AttachmentDescription(vk::AttachmentDescriptionFlags(), chosen_format, samples, load_op, store_op, stencil_load_op, stencil_store_op, init_layout, final_layout);
+        auto color_attachment_ref = vk::AttachmentReference(0U, vk::ImageLayout::eColorAttachmentOptimal);
+
+        auto pipeline_bind_point = vk::PipelineBindPoint::eGraphics;
+        auto subpass_desc = vk::SubpassDescription(vk::SubpassDescriptionFlags(), pipeline_bind_point, 0U, nullptr, 1U, &color_attachment_ref);
+
+        auto pipeline_stage_flags= vk::PipelineStageFlags(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        auto src_access_flags = vk::AccessFlags();
+        auto dest_access_flags = vk::AccessFlags(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+        auto subpass_dependency = vk::SubpassDependency(VK_SUBPASS_EXTERNAL, 0U, pipeline_stage_flags, pipeline_stage_flags, src_access_flags, dest_access_flags);
+
+        auto render_pass_create_info = vk::RenderPassCreateInfo(vk::RenderPassCreateFlags(), 1U, &color_attachment, 1U, &subpass_desc, 1U, &subpass_dependency);
+        render_pass = device->createRenderPassUnique(render_pass_create_info);
     }
 
     void GameEngine::main_loop()

@@ -41,6 +41,8 @@ namespace baas::game_engine
         std::vector<vk::Image> swap_chain_images;
         std::vector<vk::UniqueImageView> image_views;
 
+        vk::UniqueRenderPass render_pass;
+
         std::bitset<2> engine_state;
 
 
