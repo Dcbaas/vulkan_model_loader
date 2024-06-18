@@ -6,6 +6,7 @@ find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 
 set(SOURCES
+    "src/file_ops.cpp"
     "src/game_engine.cpp"
     "src/main.cpp"
 )
@@ -23,3 +24,6 @@ target_link_libraries(
     glfw
     Vulkan::Vulkan
 )
+
+configure_file(${PROJECT_SOURCE_DIR}/shaders/vert.spv shaders/vert.spv COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/shaders/frag.spv shaders/frag.spv COPYONLY)

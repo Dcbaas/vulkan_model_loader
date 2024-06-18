@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "file_ops.h"
+
 namespace baas::game_engine
 {
 
@@ -346,6 +348,8 @@ namespace baas::game_engine
 
         auto render_pass_create_info = vk::RenderPassCreateInfo(vk::RenderPassCreateFlags(), 1U, &color_attachment, 1U, &subpass_desc, 1U, &subpass_dependency);
         render_pass = device->createRenderPassUnique(render_pass_create_info);
+
+        // Create Graphics Pipeline
     }
 
     void GameEngine::main_loop()
