@@ -43,6 +43,8 @@ namespace baas::game_engine
 
         vk::UniqueRenderPass render_pass;
 
+        vk::UniquePipelineLayout pipeline_layout;
+
         std::bitset<2> engine_state;
 
 

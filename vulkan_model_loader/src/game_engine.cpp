@@ -350,6 +350,58 @@ namespace baas::game_engine
         render_pass = device->createRenderPassUnique(render_pass_create_info);
 
         // Create Graphics Pipeline
+        auto vertex_shader_code = file_ops::read_shader_code("shaders/vert.spv");
+        auto frag_shader_code = file_ops::read_shader_code("shaders/frag.spv");
+
+        auto vertex_shader_module_create_info = vk::ShaderModuleCreateInfo(vk::ShaderModuleCreateFlags(), vertex_shader_code);
+        auto vertex_shader_module = device->createShaderModuleUnique(vertex_shader_module_create_info);
+        auto vertex_shader_stage_info = vk::PipelineShaderStageCreateInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, vertex_shader_module.get(), "main");
+
+        auto frag_shader_create_info = vk::ShaderModuleCreateInfo(vk::ShaderModuleCreateFlags(), frag_shader_code);
+        auto frag_shader_module = device->createShaderModuleUnique(frag_shader_create_info);
+        auto frag_shader_stage_info = vk::PipelineShaderStageCreateInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, frag_shader_module.get(), "main");
+
+        std::vector<vk::PipelineShaderStageCreateInfo> shader_stages{vertex_shader_stage_info, frag_shader_stage_info};
+
+        auto vertex_input_create_info = vk::PipelineVertexInputStateCreateInfo(vk::PipelineVertexInputStateCreateFlags(), 0, nullptr, 0, nullptr);
+
+        auto topology = vk::PrimitiveTopology::eTriangleList;
+        auto input_assembly_create_info = vk::PipelineInputAssemblyStateCreateInfo(vk::PipelineInputAssemblyStateCreateFlags(), topology, vk::False);
+
+
+        // TODO Idk why I'm explicitly defining viewport and scissor here. EDIT I apparently need them later 
+        auto viewport = vk::Viewport{ 0.0f, 0.0f, static_cast<float>(WIDTH), static_cast<float>(HEIGHT), 0.0f, 1.0f };
+        auto scissor = vk::Rect2D{ { 0, 0 }, chosen_extent };
+        auto viewport_create_info = vk::PipelineViewportStateCreateInfo({}, viewport, scissor);
+
+        auto rasterizer_state_flags = vk::PipelineRasterizationStateCreateFlags();
+        vk::Bool32 depth_clamp_enable {vk::False};
+        vk::Bool32 rasterizer_discard_enable {vk::False};
+        auto polygon_mode = vk::PolygonMode::eFill;
+        float line_width = 1.0f;
+        auto cull_mode = vk::CullModeFlagBits::eBack;
+        auto front_face = vk::FrontFace::eClockwise;
+        vk::Bool32 depth_bias_enabled = vk::False;
+        auto rasterizer_create_info = vk::PipelineRasterizationStateCreateInfo(rasterizer_state_flags, depth_clamp_enable, rasterizer_discard_enable, polygon_mode, cull_mode, front_face, depth_bias_enabled);
+        rasterizer_create_info.setLineWidth(line_width);
+
+
+        using cfb = vk::ColorComponentFlagBits;
+        auto color_comp_flags = vk::ColorComponentFlags(cfb::eR | cfb::eG | cfb::eB | cfb::eA);
+        auto color_blend_attachment = vk::PipelineColorBlendAttachmentState();
+        color_blend_attachment.setColorWriteMask(color_comp_flags);
+        color_blend_attachment.setBlendEnable(vk::False);
+
+        std::vector<vk::PipelineColorBlendAttachmentState> color_blend_attachments{color_blend_attachment};
+        auto color_blending = vk::PipelineColorBlendStateCreateInfo({}, vk::False, vk::LogicOp::eCopy, color_blend_attachments, {0.0f, 0.0f, 0.0f, 0.0f});
+
+
+        std::vector<vk::DynamicState> dynamic_states {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+        auto dynamic_state_create_info = vk::PipelineDynamicStateCreateInfo({}, dynamic_states);
+
+        pipeline_layout = device->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo({}, {}, {}));
+
+        vk::PipelineTessellationStateCreateInfo
     }
 
     void GameEngine::main_loop()
