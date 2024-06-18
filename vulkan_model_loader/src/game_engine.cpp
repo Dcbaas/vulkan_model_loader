@@ -261,12 +261,14 @@ namespace baas::game_engine
 
         // Create Swap Chains
 
-        vk::SurfaceFormatKHR chosen_format;
+        vk::Format chosen_format;
+        vk::ColorSpaceKHR chosen_color_space;
         for (auto &&available_format : swap_chain_details.formats)
         {
             if (available_format.format == vk::Format::eB8G8R8A8Srgb && available_format.colorSpace == vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear)
             {
-                chosen_format = available_format;
+                chosen_format = available_format.format;
+                chosen_color_space = available_format.colorSpace;
                 break;
             }
         }
@@ -305,8 +307,13 @@ namespace baas::game_engine
         
         vk::ImageUsageFlags image_usage_flags(vk::ImageUsageFlagBits::eColorAttachment);
         std::vector<uint32_t> swap_info_queue_indicies{indicies.graphicsFamily.value(), indicies.presentFamily.value()};
-        vk::SwapchainCreateInfoKHR swap_chain_create_info(vk::SwapchainCreateFlagsKHR(), *surface, image_count, chosen_format, chosen_format.colorSpace, chosen_extent, 1, image_usage_flags, vk::SharingMode::eExclusive, swap_info_queue_indicies.data());
         
+        vk::SwapchainCreateFlagsKHR swap_flags{};
+        uint32_t image_array_layers{1};
+        vk::SwapchainCreateInfoKHR swap_chain_info(swap_flags, surface.get(), image_count, chosen_format, chosen_color_space, chosen_extent, image_array_layers, image_usage_flags, vk::SharingMode::eExclusive, swap_info_queue_indicies, vk::SurfaceTransformFlagBitsKHR::eIdentity, vk::CompositeAlphaFlagBitsKHR::eOpaque, chosen_present_mode, true, nullptr);
+        
+        swap_chain = device->createSwapchainKHRUnique(swap_chain_info);
+        swap_chain_images = device->getSwapchainImagesKHR(swap_chain.get());
         
     }
 

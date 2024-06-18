@@ -37,6 +37,9 @@ namespace baas::game_engine
         vk::Queue graphics_queue;
         vk::Queue present_queue;
 
+        vk::UniqueSwapchainKHR swap_chain;
+        std::vector<vk::Image> swap_chain_images;
+
         std::bitset<2> engine_state;
 
 
