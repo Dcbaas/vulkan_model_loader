@@ -256,11 +256,10 @@ namespace baas::game_engine
         
         device = physical_device.createDeviceUnique(device_create_info);
 
-        device->getQueue(indicies.graphicsFamily.value(), 0);
-        device->getQueue(indicies.presentFamily.value(), 0);
+        graphics_queue = device->getQueue(indicies.graphicsFamily.value(), 0);
+        present_queue = device->getQueue(indicies.presentFamily.value(), 0);
 
         // Create Swap Chains
-
         vk::Format chosen_format;
         vk::ColorSpaceKHR chosen_color_space;
         for (auto &&available_format : swap_chain_details.formats)
@@ -314,6 +313,17 @@ namespace baas::game_engine
         
         swap_chain = device->createSwapchainKHRUnique(swap_chain_info);
         swap_chain_images = device->getSwapchainImagesKHR(swap_chain.get());
+        
+        // Create ImageViews
+        image_views.reserve(swap_chain_images.size());
+        for (auto &&image : swap_chain_images)
+        {
+            vk::ImageViewType image_view_type = vk::ImageViewType::e2D;
+            vk::ComponentMapping component_mapping{vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG, vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA};
+            vk::ImageSubresourceRange sub_resource_range{ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 };
+            vk::ImageViewCreateInfo image_view_create_info(vk::ImageViewCreateFlags(), image, image_view_type, chosen_format, component_mapping, sub_resource_range);
+            image_views.push_back(device->createImageViewUnique(image_view_create_info));
+        }
         
     }
 
