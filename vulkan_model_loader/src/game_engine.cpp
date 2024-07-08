@@ -401,7 +401,7 @@ namespace baas::game_engine
 
         pipeline_layout = device->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo({}, {}, {}));
 
-        vk::PipelineTessellationStateCreateInfo
+
     }
 
     void GameEngine::main_loop()
